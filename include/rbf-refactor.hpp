@@ -188,6 +188,10 @@ inline void _recursive_bf(
         //printf("\n");
     }
     delete[] map_factor_c;
+
+    /*----------------------------------*/
+    /*        END first refactor        */
+    /*----------------------------------*/
     
 
     alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
