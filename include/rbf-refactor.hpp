@@ -193,7 +193,28 @@ inline void _recursive_bf(
     /*        END first refactor        */
     /*----------------------------------*/
      
-     
+
+    /*----------------------------------*/
+    /*    Refactor of second FOR loop   */
+    /*----------------------------------*/
+
+    //outer for loop can't be paralleled, and not useful to parallel inner for loop
+    //reason:
+    //the criteria for judging whether a tast can be paralleled or not is:
+    //current iteration doesn't rely on calculation from previous iteration 
+    //In the code below, ypy of each iteration relies on calculation from last iteration of the outer
+    //for loop.(Except for the first iteration where ypy is initialized by the memcpy
+    //operation above)
+    //      ypy = &img_out_f[(y - 1) * width_channel];
+    //      ycy = &img_out_f[y * width_channel];
+    //      *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
+    //this is also true for parameters like [ypf] and [ycf]
+    //the scan is line by line, by each scan depends on calculation from scan of last line
+
+
+    //the innter loop can in principle be paralleled but as the outer loop is sequential 
+    //in nature, considering the GPU=CPU communication is not cheap, I think it is not useful
+    //to parallel the inner loop.
 
     alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
     inv_alpha_ = 1 - alpha;
@@ -230,6 +251,10 @@ inline void _recursive_bf(
         }
     }
 
+
+    /*-----------------------------------------*/
+    /*    End of Refactor of second FOR loop   */
+    /*-----------------------------------------*/
     int h1 = height - 1;
     ycf = line_factor_a;
     ypf = line_factor_b;
