@@ -192,7 +192,8 @@ inline void _recursive_bf(
     /*----------------------------------*/
     /*        END first refactor        */
     /*----------------------------------*/
-    
+     
+     
 
     alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
     inv_alpha_ = 1 - alpha;
