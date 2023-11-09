@@ -226,45 +226,53 @@ inline void _recursive_bf(
     float*ycf, *ypf, *xcf;
     memcpy(map_factor_b, in_factor, sizeof(float) * width);
 
-    for (int y = 1; y < height; y++) 
-    {
-        tpy = &img[(y - 1) * width_channel];
-        tcy = &img[y * width_channel];
-        xcy = &img_temp[y * width_channel];
-        ypy = &img_out_f[(y - 1) * width_channel];
-        ycy = &img_out_f[y * width_channel];
+    // for (int y = 1; y < height; y++) 
+    // {
+    //     tpy = &img[(y - 1) * width_channel];
+    //     tcy = &img[y * width_channel];
+    //     xcy = &img_temp[y * width_channel];
+    //     ypy = &img_out_f[(y - 1) * width_channel];
+    //     ycy = &img_out_f[y * width_channel];
 
-        xcf = &in_factor[y * width];
-        ypf = &map_factor_b[(y - 1) * width];
-        ycf = &map_factor_b[y * width];
+    //     xcf = &in_factor[y * width];
+    //     ypf = &map_factor_b[(y - 1) * width];
+    //     ycf = &map_factor_b[y * width];
 
-        for (int x = 0; x < width; x++)
-        {
-            unsigned char dr = abs((*tcy++) - (*tpy++));
-            unsigned char dg = abs((*tcy++) - (*tpy++));
-            unsigned char db = abs((*tcy++) - (*tpy++));
-            int range_dist = (((dr << 1) + dg + db) >> 2);
-            float weight = range_table[range_dist];
-            float alpha_ = weight*alpha;
-            for (int c = 0; c < channel; c++) 
-                *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-                *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
-        }
-    }
+    //     for (int x = 0; x < width; x++)
+    //     {
+    //         unsigned char dr = abs((*tcy++) - (*tpy++));
+    //         unsigned char dg = abs((*tcy++) - (*tpy++));
+    //         unsigned char db = abs((*tcy++) - (*tpy++));
+    //         int range_dist = (((dr << 1) + dg + db) >> 2);
+    //         float weight = range_table[range_dist];
+    //         float alpha_ = weight*alpha;
+    //         for (int c = 0; c < channel; c++) 
+    //             *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
+    //             *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
+    //     }
+    // }
 /////////
     for(int x = 0; x < width; x++){
         tpy = &img[3 * x];
+        tcy = &img[3 * x + width_channel];
+        xcy = &img_temp[ 3 * x + width_channel];
+
         ypy = &img_out_f[3 * x];
-        ypf = &map_factor_b[(y - 1) * width];
+        ycy = &img_out_f[3 * x + width_channel];
+
+        xcf = &in_factor[ x + width];
+        ypf = &map_factor_b[x];
+        ycf = &map_factor_b[y * width];
+
         for(int y = 1; y < height; y++){
-            tcy = &img[3 * x + y * width_channel];
-            xcy = &img_temp[3 * x + y * width_channel];
-            ycy = &img_out_f[3 * x + y * width_channel];
-            xcf = &in_factor[ x + y * width];
-            ycf = &map_factor_b[ x + y * width];
-            unsigned char dr = abs(*tcy - *tpy);
-            unsigned char dg = abs(*tcy - *tpy);
-            unsigned char db = abs(*tcy - *tpy);
+            // tcy = &img[3 * x + y * width_channel];
+            // xcy = &img_temp[3 * x + y * width_channel];
+            // ycy = &img_out_f[3 * x + y * width_channel];
+            // xcf = &in_factor[ x + y * width];
+            // ycf = &map_factor_b[ x + y * width];
+            unsigned char dr = abs((*tcy++) - (*tpy++));
+            unsigned char dg = abs((*tcy++) - (*tpy++));
+            unsigned char db = abs((*tcy++) - (*tpy++));
             int range_dist = (((dr << 1) + dg + db) >> 2);
             float weight = range_table[range_dist];
             float alpha_ = weight*alpha;
@@ -272,10 +280,20 @@ inline void _recursive_bf(
             for (int c = 0; c < channel; c++) 
                 *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
                 *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
-            tpy = &img[3 * x +  y * width_channel];
+            tpy = tpy - 3 + width_channel;
+            tcy = tcy - 3 + width_channel;
+            xcy = xcy - 3 + width_channel;
+
+            ypy = ypy - 3 + width_channel; 
+            ycy = ycy - 3 + width_channel; 
+
+            xcf = xcf - 3 + width;
+            ypf = ypf - 3 + width;
+            
+            ycf = ycf - 3 + width;
         }
     }
-/////////
+///////// map_factir_a revisit + test 
 
     /*-----------------------------------------*/
     /*    End of Refactor of second FOR loop   */
