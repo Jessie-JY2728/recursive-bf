@@ -237,6 +237,7 @@ inline void _recursive_bf(
         xcf = &in_factor[y * width];
         ypf = &map_factor_b[(y - 1) * width];
         ycf = &map_factor_b[y * width];
+
         for (int x = 0; x < width; x++)
         {
             unsigned char dr = abs((*tcy++) - (*tpy++));
@@ -247,10 +248,34 @@ inline void _recursive_bf(
             float alpha_ = weight*alpha;
             for (int c = 0; c < channel; c++) 
                 *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-            *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
+                *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
         }
     }
-
+/////////
+    for(int x = 0; x < width; x++){
+        tpy = &img[3 * x];
+        ypy = &img_out_f[3 * x];
+        ypf = &map_factor_b[(y - 1) * width];
+        for(int y = 1; y < height; y++){
+            tcy = &img[3 * x + y * width_channel];
+            xcy = &img_temp[3 * x + y * width_channel];
+            ycy = &img_out_f[3 * x + y * width_channel];
+            xcf = &in_factor[ x + y * width];
+            ycf = &map_factor_b[ x + y * width];
+            unsigned char dr = abs(*tcy - *tpy);
+            unsigned char dg = abs(*tcy - *tpy);
+            unsigned char db = abs(*tcy - *tpy);
+            int range_dist = (((dr << 1) + dg + db) >> 2);
+            float weight = range_table[range_dist];
+            float alpha_ = weight*alpha;
+            //pointer move across column direction
+            for (int c = 0; c < channel; c++) 
+                *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
+                *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
+            tpy = &img[3 * x +  y * width_channel];
+        }
+    }
+/////////
 
     /*-----------------------------------------*/
     /*    End of Refactor of second FOR loop   */
