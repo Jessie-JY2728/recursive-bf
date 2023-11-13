@@ -226,43 +226,69 @@ inline void _recursive_bf(
     float*ycf, *ypf, *xcf;
     memcpy(map_factor_b, in_factor, sizeof(float) * width);
 
-    // for (int y = 1; y < height; y++) 
-    // {
-    //     tpy = &img[(y - 1) * width_channel];
-    //     tcy = &img[y * width_channel];
-    //     xcy = &img_temp[y * width_channel];
-    //     ypy = &img_out_f[(y - 1) * width_channel];
-    //     ycy = &img_out_f[y * width_channel];
+    /// for the test of the refactored code 
 
-    //     xcf = &in_factor[y * width];
-    //     ypf = &map_factor_b[(y - 1) * width];
-    //     ycf = &map_factor_b[y * width];
+    float* img_out_f_copy = new float[width_height_channel];
+    memcpy(img_out_f_copy, img_out_f, sizeof(float) * width_height_channel);
 
-    //     for (int x = 0; x < width; x++)
-    //     {
-    //         unsigned char dr = abs((*tcy++) - (*tpy++));
-    //         unsigned char dg = abs((*tcy++) - (*tpy++));
-    //         unsigned char db = abs((*tcy++) - (*tpy++));
-    //         int range_dist = (((dr << 1) + dg + db) >> 2);
-    //         float weight = range_table[range_dist];
-    //         float alpha_ = weight*alpha;
-    //         for (int c = 0; c < channel; c++) 
-    //             *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-    //             *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
-    //     }
-    // }
-/////////
-    for(int x = 0; x < width; x++){
-        tpy = &img[3 * x];
-        tcy = &img[3 * x + width_channel];
-        xcy = &img_temp[ 3 * x + width_channel];
+    float * ycy_, * ypy_, * xcy_;
+    unsigned char * tcy_, * tpy_;
+    memcpy(img_out_f_copy, img_temp, sizeof(float)* width_channel);
 
-        ypy = &img_out_f[3 * x];
-        ycy = &img_out_f[3 * x + width_channel];
+    float* map_factor_b_copy = new float[width_channel];
+    memcpy(map_factor_b_copy, img_out_f, sizeof(float) * width_channel);
 
-        xcf = &in_factor[ x + width];
-        ypf = &map_factor_b[x];
+    float*ycf_, *ypf_, *xcf_;
+    memcpy(map_factor_b_copy, in_factor, sizeof(float) * width);
+    /// end for the test of the refactored code  
+
+
+////// start of the original code
+    for (int y = 1; y < height; y++) 
+    {
+        tpy = &img[(y - 1) * width_channel];
+        tcy = &img[y * width_channel];
+        xcy = &img_temp[y * width_channel];
+        ypy = &img_out_f[(y - 1) * width_channel];
+        ycy = &img_out_f[y * width_channel];
+
+        xcf = &in_factor[y * width];
+        ypf = &map_factor_b[(y - 1) * width];
         ycf = &map_factor_b[y * width];
+
+        for (int x = 0; x < width; x++)
+        {
+            unsigned char dr = abs((*tcy++) - (*tpy++));
+            unsigned char dg = abs((*tcy++) - (*tpy++));
+            unsigned char db = abs((*tcy++) - (*tpy++));
+            int range_dist = (((dr << 1) + dg + db) >> 2);
+            float weight = range_table[range_dist];
+            float alpha_ = weight*alpha;
+            for (int c = 0; c < channel; c++) 
+                *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
+                *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
+        }
+    }
+///////// end of the original code 
+
+
+//what shall be kept the same? alpha for each pixel, ycy and ycf for each channel
+// map_factor_b changed, img_out_f changed, therefore make sure before each method, 
+//input is the same and check whether the output is the same or not
+////////
+
+
+    for(int x = 0; x < width; x++){
+        tpy_ = &img[3 * x];
+        tcy_ = &img[3 * x + width_channel];
+        xcy_ = &img_temp[ 3 * x + width_channel];
+
+        ypy_ = &img_out_f_[3 * x];
+        ycy_ = &img_out_f_[3 * x + width_channel];
+
+        xcf_ = &in_factor[ x + width];
+        ypf_ = &map_factor_b_[x];
+        ycf_ = &map_factor_b_[y * width];
 
         for(int y = 1; y < height; y++){
             // tcy = &img[3 * x + y * width_channel];
@@ -295,9 +321,11 @@ inline void _recursive_bf(
     }
 ///////// map_factir_a revisit + test 
 
-    /*-----------------------------------------*/
-    /*    End of Refactor of second FOR loop   */
-    /*-----------------------------------------*/
+///test results for img_out_f and map_factor_b
+
+
+
+
     int h1 = height - 1;
     ycf = line_factor_a;
     ypf = line_factor_b;
