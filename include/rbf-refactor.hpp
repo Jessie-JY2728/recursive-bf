@@ -151,7 +151,7 @@ inline void _recursive_bf(
         // left to right
         for (int x = 1; x < width; x++) {
             float alpha_ = map_factor_alphas[x];
-            printf("%d ", alpha_);
+            //printf("%d ", alpha_);
             *temp_x++ = ycr = inv_alpha_*(*in_x++) + alpha_*ypr; 
             *temp_x++ = ycg = inv_alpha_*(*in_x++) + alpha_*ypg; 
             *temp_x++ = ycb = inv_alpha_*(*in_x++) + alpha_*ypb;
@@ -160,7 +160,7 @@ inline void _recursive_bf(
             *temp_factor_x++ = fc = inv_alpha_ + alpha_*fp;
             fp = fc;
         }
-        printf("\n\n");
+        //printf("\n\n");
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
@@ -186,7 +186,7 @@ inline void _recursive_bf(
             *temp_factor_x = 0.5f*((*temp_factor_x) + fc);
             fp = fc;
         }
-        printf("\n");
+        //printf("\n");
     }
     delete[] map_factor_c;
 
