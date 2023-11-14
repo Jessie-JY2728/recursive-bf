@@ -6,7 +6,8 @@
 #include "stb_image.h"
 
 __global__ void firstkernel(float, float, int, int, int);
-__global__ void secondkernel(unsigned char *, float, float, int, int, int);
+//__global__ void secondkernel(unsigned char *, float, float, int, int, int);
+
 
 int main(int argc, char *argv[]) {
     if (argc != 4)
@@ -31,7 +32,9 @@ int main(int argc, char *argv[]) {
     unsigned char *img_h = stbi_load(filename_in, &width, &height, &channels, 0);
     unsigned char *img_d;
     float *img_tmp_d;
-    float *map_factor_a_d; 
+    float *map_factor_a_d;
+    float *map_factor_a_h;
+    float *img_tmp_h;
 
 
     if (img == NULL) {
@@ -39,6 +42,18 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     printf("Loaded image: w=%d, h=%d, c=%d", width, height, channels);
+
+    img_tmp_h = (float*)malloc(width * height * channels * sizeof(float));
+    if (img_tmp_h == NULL) {
+        printf("Cannot mallocate img_tmp_h\n");
+        exit(1);
+    }
+
+    map_factor_a_h = (float*)malloc(width * height * sizeof(float));
+    if (img_tmp_h == NULL) {
+        printf("Cannot mallocate img_tmp_h\n");
+        exit(1);
+    }
 
     int TOTAL_THREADS = height; // * 3
     int THREADS_PER_BLOCK = ROWS_PER_BLOCK; // * 3
@@ -68,7 +83,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    cudaMalloc((void**) &map_factor_a_d, height * width * channels * sizeof(float));
+    cudaMalloc((void**) &map_factor_a_d, height * width * sizeof(float));
     if (!img_tmp_d) {
         printf("cannot allocate map_factor_a_d of %d by %d\n", width, height);
         stbi_image_free(image);
@@ -91,7 +106,132 @@ int main(int argc, char *argv[]) {
     // now we have in device mem: img, img_temp, map_factor_a
 
     // copy img back
-    cudaMemCpy(img_h, img_d, height * width * channels * sizeof(char), cudaMemcpyDeviceToHost);
+    cudaMemCpy(img_tmp_h, img_tmp_d, height * width * channels * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemCpy(map_factor_a_h, map_factor_a_d, height * width * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(img_d);
+    cudaFree(map_factor_a_d);
+
+    /*----------------------------------------*/
+    /*    Unchanged second third loop         */
+    /*----------------------------------------*/
+
+
+    float *img_temp = img_tmp_h;
+    float *map_factor_a = map_factor_a_h;
+    float *img_out_f = (float*)malloc(width * height channel * sizeof(float));
+    if (!img_out_f) exit(1);
+    float *map_factor_b = (float*)malloc(width * height * sizeof(float));
+    if (!map_factor_b) exit(1);
+    float *slice_factor_a = (float*)malloc(width * channels * sizeof(float));
+    if (!slice_factor_a) exit(1);
+    float *slice_factor_b = (float*)malloc(width * channels * sizeof(float));
+    if (!slice_factor_b) exit(1);
+    float *line_factor_a = (float*)malloc(width * sizeof(float));
+    if (!line_factor_a) exit(1);
+    float *line_factor_b = (float*)malloc(width * sizeof(float));
+    if (!line_factor_b) exit(1);
+
+    alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
+    inv_alpha_ = 1 - alpha;
+    float * ycy, * ypy, * xcy;
+    unsigned char * tcy, * tpy;
+    memcpy(img_out_f, img_temp, sizeof(float)* width_channel);
+
+    float * in_factor = map_factor_a;
+    float*ycf, *ypf, *xcf;
+    memcpy(map_factor_b, in_factor, sizeof(float) * width);
+
+    for (int y = 1; y < height; y++) 
+    {
+        tpy = &img[(y - 1) * width_channel];
+        tcy = &img[y * width_channel];
+        xcy = &img_temp[y * width_channel];
+        ypy = &img_out_f[(y - 1) * width_channel];
+        ycy = &img_out_f[y * width_channel];
+
+        xcf = &in_factor[y * width];
+        ypf = &map_factor_b[(y - 1) * width];
+        ycf = &map_factor_b[y * width];
+        for (int x = 0; x < width; x++)
+        {
+            unsigned char dr = abs((*tcy++) - (*tpy++));
+            unsigned char dg = abs((*tcy++) - (*tpy++));
+            unsigned char db = abs((*tcy++) - (*tpy++));
+            int range_dist = (((dr << 1) + dg + db) >> 2);
+            float weight = range_table[range_dist];
+            float alpha_ = weight*alpha;
+            for (int c = 0; c < channel; c++) 
+                *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
+            *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
+        }
+    }
+
+    int h1 = height - 1;
+    ycf = line_factor_a;
+    ypf = line_factor_b;
+    memcpy(ypf, &in_factor[h1 * width], sizeof(float) * width);
+    for (int x = 0; x < width; x++) 
+        map_factor_b[h1 * width + x] = 0.5f*(map_factor_b[h1 * width + x] + ypf[x]);
+
+    ycy = slice_factor_a;
+    ypy = slice_factor_b;
+    memcpy(ypy, &img_temp[h1 * width_channel], sizeof(float)* width_channel);
+    int k = 0; 
+    for (int x = 0; x < width; x++) {
+        for (int c = 0; c < channel; c++) {
+            int idx = (h1 * width + x) * channel + c;
+            img_out_f[idx] = 0.5f*(img_out_f[idx] + ypy[k++]) / map_factor_b[h1 * width + x];
+        }
+    }
+
+    for (int y = h1 - 1; y >= 0; y--)
+    {
+        tpy = &img[(y + 1) * width_channel];
+        tcy = &img[y * width_channel];
+        xcy = &img_temp[y * width_channel];
+        float*ycy_ = ycy;
+        float*ypy_ = ypy;
+        float*out_ = &img_out_f[y * width_channel];
+
+        xcf = &in_factor[y * width];
+        float*ycf_ = ycf;
+        float*ypf_ = ypf;
+        float*factor_ = &map_factor_b[y * width];
+        for (int x = 0; x < width; x++)
+        {
+            unsigned char dr = abs((*tcy++) - (*tpy++));
+            unsigned char dg = abs((*tcy++) - (*tpy++));
+            unsigned char db = abs((*tcy++) - (*tpy++));
+            int range_dist = (((dr << 1) + dg + db) >> 2);
+            float weight = range_table[range_dist];
+            float alpha_ = weight*alpha;
+
+            float fcc = inv_alpha_*(*xcf++) + alpha_*(*ypf_++);
+            *ycf_++ = fcc;
+            *factor_ = 0.5f * (*factor_ + fcc);
+
+            for (int c = 0; c < channel; c++)
+            {
+                float ycc = inv_alpha_*(*xcy++) + alpha_*(*ypy_++);
+                *ycy_++ = ycc;
+                *out_ = 0.5f * (*out_ + ycc) / (*factor_);
+                *out_++;
+            }
+            *factor_++;
+        }
+        memcpy(ypy, ycy, sizeof(float) * width_channel);
+        memcpy(ypf, ycf, sizeof(float) * width);
+    }
+
+    for (int i = 0; i < width_height_channel; ++i)
+        img[i] = static_cast<unsigned char>(img_out_f[i]);
+
+
+    /*----------------------------------------*/
+    /*     END of unchanged                   */
+    /*----------------------------------------*/
+
+
 
     // stop timer
     end = clock();
@@ -104,7 +244,7 @@ int main(int argc, char *argv[]) {
     stb_write_jpg(filename_out, width, height, channels, img_h, 100);
     // clear up
     free(img_h);
-    cudaFree(img_d);
+    //cudaFree(img_d);
 
 }
 

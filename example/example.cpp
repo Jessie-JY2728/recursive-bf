@@ -39,12 +39,12 @@ int main(int argc, char*argv[])
 		printf("width: %d, height: %d, channels: %d\n", width, height, channel);
 		unsigned char * img_out = 0;
 		Timer timer;
-
+		/*
 		timer.start();
 		for (int i = 0; i < n; ++i)
 			recursive_bf(img, img_out, sigma_spatial, sigma_range, width, height, channel);
 		printf("Internal Buffer: %2.5fsecs\n", timer.elapsedTime() / n);
-
+		*/
 
 		float * buffer = new float[(width * height* channel + width * height
 									+ width * channel + width) * 2];
