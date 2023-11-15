@@ -257,9 +257,9 @@ inline void _recursive_bf(
         ypy_ = &img_out_f_copy[3 * x];
         ycy_ = &img_out_f_copy[3 * x + width_channel];
 
-        xcf_ = &in_factor[width];
-        ypf_ = &map_factor_b_copy[0];
-        ycf_ = &map_factor_b_copy[width];
+        xcf_ = &in_factor[x + width];
+        ypf_ = &map_factor_b_copy[x];
+        ycf_ = &map_factor_b_copy[x + width];
 
         for(int y = 1; y < height; y++){
             // tcy = &img[3 * x + y * width_channel];
