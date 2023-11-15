@@ -205,8 +205,8 @@ inline void _recursive_bf(
     unsigned char * tcy_, * tpy_;
     memcpy(img_out_f_copy, img_temp, sizeof(float)* width_channel);
 
-    float* map_factor_b_copy = new float[width_channel];
-    memcpy(map_factor_b_copy, map_factor_b, sizeof(float) * width_height);
+    float* map_factor_b_copy = new float[width_height];
+    //memcpy(map_factor_b_copy, map_factor_b, sizeof(float) * width_height);
 
     float*ycf_, *ypf_, *xcf_;
     memcpy(map_factor_b_copy, in_factor, sizeof(float) * width);
@@ -284,10 +284,9 @@ inline void _recursive_bf(
             ypy_ = ypy_ - 3 + width_channel;
             ycy_ = ycy_ - 3 + width_channel;
 
-            xcf_ = xcf_ - 3 + width;
-            ypf_ = ypf_ - 3 + width;
-            
-            ycf_ = ycf_ - 3 + width;
+            xcf_ = xcf_ - 1 + width;
+            ypf_ = ypf_ - 1 + width;
+            ycf_ = ycf_ - 1 + width;
         }
     }
 ///////// map_factir_a revisit + test 
@@ -301,7 +300,7 @@ inline void _recursive_bf(
 //        }
 //    }
     for(int i = 0; i < width_height; i++){
-        if(map_factor_b[i] != map_factor_b_copy[i] && i%100000 ==0){
+        if(map_factor_b[i] != map_factor_b_copy[i]){
             printf("Results are not correct, the orignal result is map_factor_b[%d] = %f, "
             "whereas the refactoroed result map_factor_copy[%d] = is %f\n", i, map_factor_b[i], i, map_factor_b_copy[i]);
         }
