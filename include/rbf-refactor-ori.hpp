@@ -199,7 +199,7 @@ inline void _recursive_bf(
    // for the test of the refactored code 
 
     float* img_out_f_copy = new float[width_height_channel];
-    memcpy(img_out_f_copy, img_out_f, sizeof(float) * width_height_channel);
+    // memcpy(img_out_f_copy, img_out_f, sizeof(float) * width_height_channel);
 
     float * ycy_, * ypy_, * xcy_;
     unsigned char * tcy_, * tpy_;
@@ -276,7 +276,8 @@ inline void _recursive_bf(
             //pointer move across column direction
             for (int c = 0; c < channel; c++) 
                 *ycy_++ = inv_alpha_*(*xcy_++) + alpha_*(*ypy_++);
-                *ycf_++ = inv_alpha_*(*xcf_++) + alpha_*(*ypf_++);
+                // *ycf_++ = inv_alpha_*(*xcf_++) + alpha_*(*ypf_++); 
+            *ycf_++ = inv_alpha_*(*xcf_++) + alpha_*(*ypf_++);
             tpy_ = tpy_ - 3 + width_channel;
             tcy_ = tcy_ - 3 + width_channel;
             xcy_ = xcy_ - 3 + width_channel;
@@ -293,12 +294,12 @@ inline void _recursive_bf(
 
 ///test results for img_out_f and map_factor_b
 //test img_out_f and map_factor_a
-//    for(int i = 0; i < width_height_channel; i++){
-//        if(img_out_f[i] != img_out_f_copy[i]){
-//            printf("Results are not correct, the orignal result is img_out_f[%d] = %f,"
-//            "whereas the refactoroed result img_out_f_copy[%d] = is %f\n", i, img_out_f[i], i, img_out_f_copy[i]);
-//        }
-//    }
+   for(int i = 0; i < width_height_channel; i++){
+       if(img_out_f[i] != img_out_f_copy[i]){
+           printf("Results are not correct, the orignal result is img_out_f[%d] = %f,"
+           "whereas the refactoroed result img_out_f_copy[%d] = is %f\n", i, img_out_f[i], i, img_out_f_copy[i]);
+       }
+   }
     for(int i = 0; i < width_height; i++){
         if(map_factor_b[i] != map_factor_b_copy[i]){
             printf("Results are not correct, the orignal result is map_factor_b[%d] = %f, "
