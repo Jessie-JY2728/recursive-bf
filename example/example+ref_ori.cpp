@@ -2,7 +2,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
 #include "stb_image_write.h"
-#include "../include/rbf-refactor.hpp"
+#include "../include/rbf-refactor-ori.hpp"
 #include <stdio.h>
 #include <time.h>
 

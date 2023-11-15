@@ -1,5 +1,5 @@
-#ifndef INCLUDE_RBF_REFACTOR
-#define INCLUDE_RBF_REFACTOR
+#ifndef INCLUDE_RBF
+#define INCLUDE_RBF
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -85,6 +85,7 @@ inline void _recursive_bf(
     const int width_channel = width * channel;
     const int width_height_channel = width * height * channel;
 
+//    printf("width_height_channel is %d", width_height_channel);
     bool is_buffer_internal = (buffer == 0);
     if (is_buffer_internal)
         buffer = new float[(width_height_channel + width_height 
@@ -109,75 +110,72 @@ inline void _recursive_bf(
     float ypr, ypg, ypb, ycr, ycg, ycb;
     float fp, fc;
     float inv_alpha_ = 1 - alpha;
+    for (int y = 0; y < height; y++)
+    {
+        float * temp_x = &img_temp[y * width_channel];
+        unsigned char * in_x = &img[y * width_channel];
+        unsigned char * texture_x = &img[y * width_channel];
+        *temp_x++ = ypr = *in_x++; 
+        *temp_x++ = ypg = *in_x++; 
+        *temp_x++ = ypb = *in_x++;
+        unsigned char tpr = *texture_x++; 
+        unsigned char tpg = *texture_x++;
+        unsigned char tpb = *texture_x++;
 
-    /*----------------------------------*/
-    /*    Refactor of first FOR loop    */
-    /*----------------------------------*/
+        float * temp_factor_x = &map_factor_a[y * width];
+        *temp_factor_x++ = fp = 1;
 
-    // REFACTOR: store alpha_ of each pixel in map_factor_b for l->r, map_factor_c for r->l, use wh threads
-    float *map_factor_c = new float[width_height];
-    for (int y = 0; y < height; y++) {
-        unsigned char* texture_x = &img[y * width_channel];
-        float* map_alphas_l = &map_factor_b[y * width];
-        float* map_alphas_r = &map_factor_c[y * width];
-        for (int x = 1; x < width; x++) {
-            unsigned char tpr = texture_x[x * 3 - 3], tcr = texture_x[x * 3];
-            unsigned char tpg = texture_x[x * 3 - 2], tcg = texture_x[x * 3 + 1];
-            unsigned char tpb = texture_x[x * 3 - 1], tcb = texture_x[x * 3 + 2];
+        // from left to right
+        for (int x = 1; x < width; x++) 
+        {
+            unsigned char tcr = *texture_x++; 
+            unsigned char tcg = *texture_x++; 
+            unsigned char tcb = *texture_x++;
             unsigned char dr = abs(tcr - tpr);
             unsigned char dg = abs(tcg - tpg);
             unsigned char db = abs(tcb - tpb);
             int range_dist = (((dr << 1) + dg + db) >> 2);
             float weight = range_table[range_dist];
             float alpha_ = weight*alpha;
-            map_alphas_l[x] = alpha_;
-            map_alphas_r[x] = (((db << 1) + dg + dr) >> 2);
-        }
-    }
-
-
-    // REFACTOR: left to right and right to left with pre computed alpha_, can use wc threads + another stream for temp_factor
-    for (int y = 0; y < height; y++) {
-        float * temp_x = &img_temp[y * width_channel];
-        unsigned char * in_x = &img[y * width_channel];
-        *temp_x++ = ypr = *in_x++; 
-        *temp_x++ = ypg = *in_x++; 
-        *temp_x++ = ypb = *in_x++;
-        float* map_factor_alphas = &map_factor_b[y * width];
-        float * temp_factor_x = &map_factor_a[y * width];
-        *temp_factor_x++ = fp = 1;
-
-        // left to right
-        for (int x = 1; x < width; x++) {
-            float alpha_ = map_factor_alphas[x];
-            //printf("%d ", alpha_);
             *temp_x++ = ycr = inv_alpha_*(*in_x++) + alpha_*ypr; 
             *temp_x++ = ycg = inv_alpha_*(*in_x++) + alpha_*ypg; 
             *temp_x++ = ycb = inv_alpha_*(*in_x++) + alpha_*ypb;
+            tpr = tcr; tpg = tcg; tpb = tcb;
             ypr = ycr; ypg = ycg; ypb = ycb;
-
             *temp_factor_x++ = fc = inv_alpha_ + alpha_*fp;
             fp = fc;
         }
-        //printf("\n\n");
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
+        tpr = *--texture_x; 
+        tpg = *--texture_x; 
+        tpb = *--texture_x;
         ypr = *in_x; ypg = *in_x; ypb = *in_x;
 
         *--temp_factor_x; *temp_factor_x = 0.5f*((*temp_factor_x) + 1);
         fp = 1;
-        map_factor_alphas = &map_factor_c[y * width];
-        //right to left
-        for (int x = width - 2; x >= 0; x--) {
-            float alpha_ = map_factor_alphas[x+1];
-            //printf("%d ", alpha_);
+
+        // from right to left
+        for (int x = width - 2; x >= 0; x--) 
+        {
+            unsigned char tcr = *--texture_x; 
+            unsigned char tcg = *--texture_x; 
+            unsigned char tcb = *--texture_x;
+            unsigned char dr = abs(tcr - tpr);
+            unsigned char dg = abs(tcg - tpg);
+            unsigned char db = abs(tcb - tpb);
+            int range_dist = (((dr << 1) + dg + db) >> 2);
+            float weight = range_table[range_dist];
+            float alpha_ = weight * alpha;
+
             ycr = inv_alpha_ * (*--in_x) + alpha_ * ypr; 
             ycg = inv_alpha_ * (*--in_x) + alpha_ * ypg; 
             ycb = inv_alpha_ * (*--in_x) + alpha_ * ypb;
             *--temp_x; *temp_x = 0.5f*((*temp_x) + ycr);
             *--temp_x; *temp_x = 0.5f*((*temp_x) + ycg);
             *--temp_x; *temp_x = 0.5f*((*temp_x) + ycb);
+            tpr = tcr; tpg = tcg; tpb = tcb;
             ypr = ycr; ypg = ycg; ypb = ycb;
 
             fc = inv_alpha_ + alpha_*fp;
@@ -185,37 +183,7 @@ inline void _recursive_bf(
             *temp_factor_x = 0.5f*((*temp_factor_x) + fc);
             fp = fc;
         }
-        //printf("\n");
     }
-    delete[] map_factor_c;
-
-    /*----------------------------------*/
-    /*        END first refactor        */
-    /*----------------------------------*/
-     
-
-    /*----------------------------------*/
-    /*    Refactor of second FOR loop   */
-    /*----------------------------------*/
-
-    //outer for loop can't be paralleled, and not useful to parallel inner for loop
-    //reason:
-    //the criteria for judging whether a tast can be paralleled or not is:
-    //current iteration doesn't rely on calculation from previous iteration 
-    //In the code below, ypy of each iteration relies on calculation from last iteration of the outer
-    //for loop.(Except for the first iteration where ypy is initialized by the memcpy
-    //operation above)
-    //      ypy = &img_out_f[(y - 1) * width_channel];
-    //      ycy = &img_out_f[y * width_channel];
-    //      *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-    //this is also true for parameters like [ypf] and [ycf]
-    //the scan is line by line, by each scan depends on calculation from scan of last line
-
-
-    //the innter loop can in principle be paralleled but as the outer loop is sequential 
-    //in nature, considering the GPU=CPU communication is not cheap, I think it is not useful
-    //to parallel the inner loop.
-
     alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
     inv_alpha_ = 1 - alpha;
     float * ycy, * ypy, * xcy;
@@ -225,119 +193,125 @@ inline void _recursive_bf(
     float * in_factor = map_factor_a;
     float*ycf, *ypf, *xcf;
     memcpy(map_factor_b, in_factor, sizeof(float) * width);
+    
+    
+    
+   // for the test of the refactored code 
 
-    /// for the test of the refactored code 
+    float* img_out_f_copy = new float[width_height_channel];
+    memcpy(img_out_f_copy, img_out_f, sizeof(float) * width_height_channel);
 
-    // float* img_out_f_copy = new float[width_height_channel];
-    // memcpy(img_out_f_copy, img_out_f, sizeof(float) * width_height_channel);
+    float * ycy_, * ypy_, * xcy_;
+    unsigned char * tcy_, * tpy_;
+    memcpy(img_out_f_copy, img_temp, sizeof(float)* width_channel);
 
-    // float * ycy_, * ypy_, * xcy_;
-    // unsigned char * tcy_, * tpy_;
-    // memcpy(img_out_f_copy, img_temp, sizeof(float)* width_channel);
+    float* map_factor_b_copy = new float[width_channel];
+    memcpy(map_factor_b_copy, map_factor_b, sizeof(float) * width_channel);
 
-    // float* map_factor_b_copy = new float[width_channel];
-    // memcpy(map_factor_b_copy, img_out_f, sizeof(float) * width_channel);
+    float*ycf_, *ypf_, *xcf_;
+    memcpy(map_factor_b_copy, in_factor, sizeof(float) * width);
+    // end for the test of the refactored code  
 
-    // float*ycf_, *ypf_, *xcf_;
-    // memcpy(map_factor_b_copy, in_factor, sizeof(float) * width);
-    /// end for the test of the refactored code  
 
-// 1. test the original code 
-// 2. check the refactored loop and test results.
 ////// start of the original code
-    for (int y = 1; y < height; y++) 
-    {
-        tpy = &img[(y - 1) * width_channel];
-        tcy = &img[y * width_channel];
-        xcy = &img_temp[y * width_channel];
-        ypy = &img_out_f[(y - 1) * width_channel];
-        ycy = &img_out_f[y * width_channel];
+     for (int y = 1; y < height; y++)
+     {
+         tpy = &img[(y - 1) * width_channel];
+         tcy = &img[y * width_channel];
+         xcy = &img_temp[y * width_channel];
+         ypy = &img_out_f[(y - 1) * width_channel];
+         ycy = &img_out_f[y * width_channel];
 
-        xcf = &in_factor[y * width];
-        ypf = &map_factor_b[(y - 1) * width];
-        ycf = &map_factor_b[y * width];
+         xcf = &in_factor[y * width];
+         ypf = &map_factor_b[(y - 1) * width];
+         ycf = &map_factor_b[y * width];
 
-        for (int x = 0; x < width; x++)
-        {
-            unsigned char dr = abs((*tcy++) - (*tpy++));
-            unsigned char dg = abs((*tcy++) - (*tpy++));
-            unsigned char db = abs((*tcy++) - (*tpy++));
+         for (int x = 0; x < width; x++)
+         {
+             unsigned char dr = abs((*tcy++) - (*tpy++));
+             unsigned char dg = abs((*tcy++) - (*tpy++));
+             unsigned char db = abs((*tcy++) - (*tpy++));
+             int range_dist = (((dr << 1) + dg + db) >> 2);
+             float weight = range_table[range_dist];
+             float alpha_ = weight*alpha;
+             for (int c = 0; c < channel; c++)
+                 *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
+                 *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
+         }
+     }
+///////// end of the original code 
+
+//as the second for loop only changes the value of map_factor_b and img_out_f,
+//to prove that the refactored code is correct, we only need to feed the two parts 
+//the same input, and check its computed output. For read-only input we can use the same
+//address, but for changed varaible, we create a copy of them, img_out_f_copy and map_factor_b_copy
+//[Result: the img_out_f(input for original code) is the same as 
+//img_out_f_copy(input for refactored code) before and after computation.]
+//But map_factor_b is different from map_factor_b_copy after computation.
+
+/////--------/////
+    for(int x = 0; x < width; x++){
+        tpy_ = &img[3 * x];
+        tcy_ = &img[3 * x + width_channel];
+        xcy_ = &img_temp[ 3 * x + width_channel];
+
+        ypy_ = &img_out_f_copy[3 * x];
+        ycy_ = &img_out_f_copy[3 * x + width_channel];
+
+        xcf_ = &in_factor[width];
+        ypf_ = &map_factor_b_copy[0];
+        ycf_ = &map_factor_b_copy[width];
+
+        for(int y = 1; y < height; y++){
+
+            unsigned char dr = abs((*tcy_++) - (*tpy_++));
+            unsigned char dg = abs((*tcy_++) - (*tpy_++));
+            unsigned char db = abs((*tcy_++) - (*tpy_++));
             int range_dist = (((dr << 1) + dg + db) >> 2);
             float weight = range_table[range_dist];
             float alpha_ = weight*alpha;
+            //pointer move across column direction
             for (int c = 0; c < channel; c++) 
-                *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-                *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
+                *ycy_++ = inv_alpha_*(*xcy_++) + alpha_*(*ypy_++);
+                *ycf_++ = inv_alpha_*(*xcf_++) + alpha_*(*ypf_++);
+            tpy_ = tpy_ - 3 + width_channel;
+            tcy_ = tcy_ - 3 + width_channel;
+            xcy_ = xcy_ - 3 + width_channel;
+
+            ypy_ = ypy_ - 3 + width_channel;
+            ycy_ = ycy_ - 3 + width_channel;
+
+            xcf_ = xcf_ - 3 + width;
+            ypf_ = ypf_ - 3 + width;
+            
+            ycf_ = ycf_ - 3 + width;
         }
     }
-///////// end of the original code 
+///////// 
 
-
-//what shall be kept the same? alpha for each pixel, ycy and ycf for each channel
-// map_factor_b changed, img_out_f changed, therefore make sure before each method, 
-//input is the same and check whether the output is the same or not
-////////
-
-/////--------/////
-//     for(int x = 0; x < width; x++){
-//         tpy_ = &img[3 * x];
-//         tcy_ = &img[3 * x + width_channel];
-//         xcy_ = &img_temp[ 3 * x + width_channel];
-
-//         ypy_ = &img_out_f_[3 * x];
-//         ycy_ = &img_out_f_[3 * x + width_channel];
-
-//         xcf_ = &in_factor[ x + width];
-//         ypf_ = &map_factor_b_[x];
-//         ycf_ = &map_factor_b_[y * width];
-
-//         for(int y = 1; y < height; y++){
-//             // tcy = &img[3 * x + y * width_channel];
-//             // xcy = &img_temp[3 * x + y * width_channel];
-//             // ycy = &img_out_f[3 * x + y * width_channel];
-//             // xcf = &in_factor[ x + y * width];
-//             // ycf = &map_factor_b[ x + y * width];
-//             unsigned char dr = abs((*tcy++) - (*tpy++));
-//             unsigned char dg = abs((*tcy++) - (*tpy++));
-//             unsigned char db = abs((*tcy++) - (*tpy++));
-//             int range_dist = (((dr << 1) + dg + db) >> 2);
-//             float weight = range_table[range_dist];
-//             float alpha_ = weight*alpha;
-//             //pointer move across column direction
-//             for (int c = 0; c < channel; c++) 
-//                 *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-//                 *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
-//             tpy = tpy - 3 + width_channel;
-//             tcy = tcy - 3 + width_channel;
-//             xcy = xcy - 3 + width_channel;
-
-//             ypy = ypy - 3 + width_channel; 
-//             ycy = ycy - 3 + width_channel; 
-
-//             xcf = xcf - 3 + width;
-//             ypf = ypf - 3 + width;
-            
-//             ycf = ycf - 3 + width;
-//         }
-//     }
-// ///////// map_factir_a revisit + test 
-
-// ///test results for img_out_f and map_factor_b
-// //test img_out_f and map_factor_a
-// for(int i = 0; i < width_height_channel; i++){
-//     if(img_out_f[i] != img_out_f_copy[i]){
-//         printf("Results are not correct, the orignal result is img_out_f[%d] = %f, 
-//         whereas the refactoroed result img_out_f_copy[%d] = is %f\n", i, img_out_f[i], i, img_out_f_copy[i]);
-//     }
-// }
-// for(int i = 0; i < width_height; i++){
-//     if(map_factor_b[i] != map_factor_b_copy[i]){
-//         printf("Results are not correct, the orignal result is map_factor_b[%d] = %f, 
-//         whereas the refactoroed result map_factor_copy[%d] = is %f\n", i,map_factor_b_[i], i, map_factor_b_copy[i]);
-//     }
-// }
-
+//test results for img_out_f and map_factor_b
+test img_out_f and map_factor_a
+   for(int i = 0; i < width_height_channel; i++){
+       if(img_out_f[i] != img_out_f_copy[i]){
+           printf("Results are not correct, the orignal result is img_out_f[%d] = %f,"
+           "whereas the refactoroed result img_out_f_copy[%d] = is %f\n", i, img_out_f[i], i, img_out_f_copy[i]);
+       }
+   }
+    for(int i = 0; i < width_height; i++){
+        if(map_factor_b[i] != map_factor_b_copy[i] && i%100000 ==0){
+            printf("Results are not correct, the orignal result is map_factor_b[%d] = %f, "
+            "whereas the refactoroed result map_factor_copy[%d] = is %f\n", i, map_factor_b[i], i, map_factor_b_copy[i]);
+        }
+    }
+    printf("width is %d\n", width);
+    printf("height is %d\n", height);
+    printf("width_height_channel is %d\n", width_height_channel);
 ////---------------/////
+
+
+
+
+
 
     int h1 = height - 1;
     ycf = line_factor_a;
@@ -418,4 +392,118 @@ inline void recursive_bf(
     _recursive_bf(img_out, sigma_spatial, sigma_range, width, height, channel, buffer);
 }
 
-#endif // INCLUDE_RBF_REFACTOR
+#endif // INCLUDE_RBF
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
