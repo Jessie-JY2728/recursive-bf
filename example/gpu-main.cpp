@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -41,7 +43,7 @@ int main(int argc, char *argv[]) {
         printf("Low Rating stb has FAILED to load Input Image. SAD.");
         exit(1);
     }
-    printf("Loaded image: w=%d, h=%d, c=%d", width, height, channel);
+    printf("Loaded image: w=%d, h=%d, c=%d\n", width, height, channel);
     // char* image: input file
 
     int width_height = width * height;
@@ -57,18 +59,21 @@ int main(int argc, char *argv[]) {
     timer.start();  // start timer
 	recursive_bf(image, image_out, sigma_spatial, sigma_range, width, height, channel, buffer); // use original rbf
     elapse = timer.elapsedTime(); // runtime
-	printf("External Buffer: %2.5fsecs\n", elapse); // print runtime
+	printf("CPU External Buffer: %2.5fsecs\n", elapse); // print runtime
 	delete[] buffer;    // clean up
     std::string cpu_filename_out = "cpu_" + filename_out;   // add prefix "cpu_" for output file name
     stbi_write_jpg(cpu_filename_out.c_str(), width, height, channel, image_out, 100);   // write out cpu image
 
 
     // GPU naive kernel
+    float *buffer = new float[(width_height_channel + width_height + width_channel + width) * 2];
     timer.start();
-    invokeNaiveKernel(image, width, height, channel, sigma_spatial, sigma_range, ROWS_PER_BLOCK);
+    invokeNaiveKernel(image, width, height, channel, sigma_spatial, sigma_range, ROWS_PER_BLOCK, buffer);
     elapse = timer.elapsedTime();   // runtime
-
-
+    printf("GPU Naive Kernel: %2.5fsecs\n", elapse); // print runtime
+    delete[] buffer;
+    std::string gpu_naive_filename_out = "gpu_naive_" + filename_out;   // add prefix "cpu_" for output file name
+    stbi_write_jpg(cpu_filename_out.c_str(), width, height, channel, image, 100);   // write out cpu image
 
     return 0;
 }
