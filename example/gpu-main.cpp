@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     elapse = timer.elapsedTime();   // runtime
     printf("GPU Naive Kernel: %2.5fsecs\n", elapse); // print runtime
     delete[] buffer;
-    std::string gpu_naive_filename_out = "gpu_naive_" + filename_out;   // add prefix "cpu_" for output file name
+    std::string gpu_naive_filename_out = "gpu_naive_" + filename_out;   // add prefix "gpu_naive_" for output file name
     stbi_write_jpg(cpu_filename_out.c_str(), width, height, channel, image, 100);   // write out cpu image
 
     return 0;
