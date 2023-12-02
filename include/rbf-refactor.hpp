@@ -283,46 +283,6 @@ inline void _recursive_bf(
     /*----------------------------------*/
     /*    BEGIN third refactor          */
     /*----------------------------------*/
-    /*
-    for (int y = h1 - 1; y >= 0; y--)
-    {
-        tpy = &img[(y + 1) * width_channel];
-        tcy = &img[y * width_channel];
-        xcy = &img_temp[y * width_channel];
-        float*ycy_ = ycy;
-        float*ypy_ = ypy;
-        float*out_ = &img_out_f[y * width_channel];
-
-        xcf = &in_factor[y * width];
-        float*ycf_ = ycf;
-        float*ypf_ = ypf;
-        float*factor_ = &map_factor_b[y * width];
-        for (int x = 0; x < width; x++)
-        {
-            unsigned char dr = abs((*tcy++) - (*tpy++));
-            unsigned char dg = abs((*tcy++) - (*tpy++));
-            unsigned char db = abs((*tcy++) - (*tpy++));
-            int range_dist = (((dr << 1) + dg + db) >> 2);
-            float weight = range_table[range_dist];
-            float alpha_ = weight*alpha;
-
-            float fcc = inv_alpha_*(*xcf++) + alpha_*(*ypf_++);
-            *ycf_++ = fcc;
-            *factor_ = 0.5f * (*factor_ + fcc);
-
-            for (int c = 0; c < channel; c++)
-            {
-                float ycc = inv_alpha_*(*xcy++) + alpha_*(*ypy_++);
-                *ycy_++ = ycc;
-                *out_ = 0.5f * (*out_ + ycc) / (*factor_);
-                *out_++;
-            }
-            *factor_++;
-        }
-        memcpy(ypy, ycy, sizeof(float) * width_channel);
-        memcpy(ypf, ycf, sizeof(float) * width);
-    } */
-
 
     for (int x = 0; x < width; x++) {
         tpy = &img[x * 3 + h1 * width_channel];
@@ -364,11 +324,11 @@ inline void _recursive_bf(
             float ycc_b = inv_alpha_*(*xcy++) + alpha_* at_ypy_b;
             at_ypy_b = ycc_b;
             *out_ = 0.5f * (*out_ + ycc_b) / (*factor_);
-            *out_++;
+            //*out_++;
 
             tcy = tcy - 3 - width_channel;
             tpy = tpy - 3 - width_channel;
-            out_ = out_ - 3 - width_channel;
+            out_ = out_ - 2 - width_channel;
             xcy = xcy - 3 - width_channel;
             factor_ = factor_ - width;
             xcf = xcf - width;
@@ -378,8 +338,10 @@ inline void _recursive_bf(
     /*        END third refactor        */
     /*----------------------------------*/
 
-    for (int i = 0; i < width_height_channel; ++i)
+    for (int i = 0; i < width_height_channel; ++i){
+        printf("%.4f  ", img_out_f[i]);
         img[i] = static_cast<unsigned char>(img_out_f[i]);
+    }
 
     if (is_buffer_internal)
         delete[] buffer;

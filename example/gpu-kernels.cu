@@ -9,6 +9,7 @@ __global__ void naiveKernel(unsigned char*, float*, float*, float* , int, int, i
 __global__ void prelimKernel(unsigned char*, float*, float*, int, int, int, float);
 __global__ void firstKernel(unsigned char*, float*, float*,  int, int, int, float);
 __global__ void secondKernel();
+__global__ void thirdKernel(unsigned char*, float*, float*,  int, int, int, float);
 
 __constant__ float range_table_const[QX_DEF_CHAR_MAX + 1];   // Optimize: range table on device, in const memory
 
@@ -258,11 +259,6 @@ void naiveRemainder(
         }
     }
 
-    //float* slice_factor_a = new float[width * channel];
-    //float* slice_factor_b = new float[width * channel];
-    //float* line_factor_a = new float[width];
-    //float* line_factor_b = new float[width];
-
     int h1 = height - 1;
     ycf = line_factor_a;
     ypf = line_factor_b;
@@ -324,7 +320,6 @@ void naiveRemainder(
         img[i] = static_cast<unsigned char>(img_out_f[i]);
     
 }
-
 
 /*--------------------------------*/
 /*   END Naive Section            */
@@ -396,9 +391,19 @@ void refactorGPU(
     firstKernel<<<grid_first, block_first>>>(img_d, range_table_const, buffer_d, width, height, channel, sigma_spatial);
     // no need to copy anything back, sync and begin second kernel
     cudaDeviceSynchronize();
+
+    secondKernel(); // TODO: fill in second kernel
+
+    cudaDeviceSynchronize();
+
+    num_blocks = (width % rows_per_block == 0) ? width / rows_per_block : width / rows_per_block + 1;
+    dim3 grid_third(num_blocks, 1, 1);
+    dim3 block_third(rows_per_block, 1, 1);
+    thirdKernel<<<grid_third, block_third>>>(img_d, range_table_const, buffer_d, width, height, channel, sigma_spatial);
 }
 
-// computes: img_tmp, map_factor_a
+// input: img
+// output: img_tmp, map_factor_a
 __global__ void firstKernel(
     unsigned char* img, float* range_table, float* buffer, 
     int width, int height, int channel, float sigma_spatial) 
@@ -486,4 +491,79 @@ __global__ void firstKernel(
         *temp_factor_x = 0.5f*((*temp_factor_x) + fc);
         fp = fc;
     }  
+}
+
+
+// input: img, img_temp, map_factor_a, map_factor_b
+// output: img_out_f
+__global__ void thirdKernel(
+    unsigned char* img, float* buffer, float* range_table, 
+    int width, int height, int channel, float sigma_spatial)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    if (x >= width) return;
+
+    int width_height = width * height, width_channel = width * channel;
+    int width_height_channel = width * height * channel;
+    float * img_out_f = buffer;
+    float * img_temp = &img_out_f[width_height_channel];
+    float * map_factor_a = &img_temp[width_height_channel];
+    float * map_factor_b = &map_factor_a[width_height];
+
+    int h1 = height - 1;
+    float alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height))), inv_alpha_ = 1 - alpha;
+    float* xcy;
+    unsigned char *tcy, *tpy;
+    float *xcf;
+
+    tpy = &img[x * 3 + h1 * width_channel];
+    tcy = tpy - width_channel;
+    xcy = &img_temp[x * 3 + (h1 - 1) * width_channel];
+    float at_ypf = map_factor_a[h1 * width + x];
+
+    float at_ypy_r = img_temp[h1 * width_channel + x * 3];
+    float at_ypy_g = img_temp[h1 * width_channel + x * 3 + 1];
+    float at_ypy_b = img_temp[h1 * width_channel + x * 3 + 2];
+
+    float* out_ = &img_out_f[x * 3 + (h1 - 1) * width_channel];
+    xcf = &map_factor_a[(h1 -1)* width + x];
+    float* factor_ = &map_factor_b[x + (h1-1) * width];
+
+    //float alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
+
+    for (int y = h1 - 1; y >= 0; y--) {
+        unsigned char dr = abs((*tcy++) - (*tpy++));
+        unsigned char dg = abs((*tcy++) - (*tpy++));
+        unsigned char db = abs((*tcy++) - (*tpy++));
+        int range_dist = (((dr << 1) + dg + db) >> 2);
+        float weight = range_table[range_dist];
+        float alpha_ = weight*alpha;
+
+        float fcc = inv_alpha_*(*xcf) + alpha_*(at_ypf);
+        at_ypf = fcc;
+        *factor_ = 0.5f * (*factor_ + fcc);
+
+        float ycc_r = inv_alpha_*(*xcy++) + alpha_* at_ypy_r;
+        at_ypy_r = ycc_r;
+    
+        *out_ = 0.5f * (*out_ + ycc_r) / (*factor_);
+        *out_++;
+
+        float ycc_g = inv_alpha_*(*xcy++) + alpha_* at_ypy_g;
+        at_ypy_g = ycc_g;
+        *out_ = 0.5f * (*out_ + ycc_g) / (*factor_);
+        *out_++;
+
+        float ycc_b = inv_alpha_*(*xcy++) + alpha_* at_ypy_b;
+        at_ypy_b = ycc_b;
+        *out_ = 0.5f * (*out_ + ycc_b) / (*factor_);
+        //*out_++;
+
+        tcy = tcy - 3 - width_channel;
+        tpy = tpy - 3 - width_channel;
+        out_ = out_ - 2 - width_channel;
+        xcy = xcy - 3 - width_channel;
+        factor_ = factor_ - width;
+        xcf = xcf - width;
+    }
 }
