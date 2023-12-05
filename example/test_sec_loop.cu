@@ -3,13 +3,13 @@ Compare GPU and CPU version of third loop.
 correctness and efficiency
 ---------------- */
 #include <iostream>
-#include <random>
 #include <ctime>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda.h>
 #include <time.h>
+#include <curand_kernel.h>
 #define QX_DEF_CHAR_MAX 255
 
 __global__ void secondKernel (
@@ -41,14 +41,13 @@ height, channel, width_channel -----*/
     int buffer_size = (width_height_channel + width_height + width_channel + width) * 2;
     float *buffer = new float[buffer_size];
     
+      // Set up cuRAND generator
+    curandGenerator_t gen;
+    curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+    curandSetPseudoRandomGeneratorSeed(gen, 1234ULL);  // Set a seed for reproducibility
+    // Generate random float values using cuRAND
+    curandGenerateUniform(gen, buffer, buffer_size);
 
-    // Set up random number generator with seed based on current time
-    std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)));
-    // Initialize buffer with random float values between 0 and 1
-    std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
-    for (int i = 0; i < buffer_size; ++i) {
-        buffer[i] = distribution(rng);
-    }
    
     // Calculate the size of the image data
     size_t imgSize = static_cast<size_t>(width) * height * channels;
