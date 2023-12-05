@@ -39,8 +39,8 @@ int main(int argc, char *argv[]){
 -----*/
 
 //creation of artificial input
-    int width = 3;
-    int height = 3;
+    int width = 10;
+    int height = 2;
     int channel = 3;
     int width_channel = width * channel;
     int width_height_channel = width * height * channel;
@@ -58,9 +58,9 @@ int main(int argc, char *argv[]){
     for (size_t i = 0; i < buffer_size; ++i) {
         buffer[i] = distribution(gen);
     }
-    for(int i = 0; i < buffer_size; i++){
-        printf("current buffer[%d] = %f ", i, buffer[i]);
-    }
+    // for(int i = 0; i < buffer_size; i++){
+    //     printf("current buffer[%d] = %f ", i, buffer[i]);
+    // }
 
 
    //2. artificial image
@@ -74,9 +74,9 @@ int main(int argc, char *argv[]){
     for (size_t i = 0; i < imgSize; ++i) {
         img_h[i] = rand() % 256; // Assign random values between 0 and 255
     }
-    for(int i = 0; i < imgSize; i++){
-        printf("current img_h[%d] = %d ", i, img_h[i]);
-    }
+    // for(int i = 0; i < imgSize; i++){
+    //     printf("current img_h[%d] = %d ", i, img_h[i]);
+    // }
 
 
     float * img_out_f = buffer;
@@ -121,6 +121,11 @@ int main(int argc, char *argv[]){
     memcpy(map_factor_b_copy, map_factor_b, sizeof(float) * width_height);
     // memcpy(map_factor_b_copy, in_factor, sizeof(float) * width);
 
+    //testing cpu refactor
+    float* img_out_f_2 = new float[width_height_channel];
+    memcpy(img_out_f_2, img_out_f, sizeof(float) * width_height_channel);
+    float* map_factor_b_2 = new float[width_height];
+    memcpy(map_factor_b_2, map_factor_b, sizeof(float) * width_height);
 
     Timer timer;
     float elapse;
@@ -151,6 +156,46 @@ int main(int argc, char *argv[]){
             *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
         }
     }
+
+//     for (int y = 1; y < height; y++)
+//      {
+//          tpy = &img_h[(y - 1) * width_channel];
+//          tcy = &img_h[y * width_channel];
+//          xcy = &img_temp[y * width_channel];
+//          ypy = &img_out_f_2[(y - 1) * width_channel];
+//          ycy = &img_out_f_2[y * width_channel];
+
+//          xcf = &in_factor[y * width];
+//          ypf = &map_factor_b_2[(y - 1) * width];
+//          ycf = &map_factor_b_2[y * width];
+
+//          for (int x = width - 1; x >= 0; x--)
+//          {
+//              unsigned char dr = abs((*tcy++) - (*tpy++));
+//              unsigned char dg = abs((*tcy++) - (*tpy++));
+//              unsigned char db = abs((*tcy++) - (*tpy++));
+//              int range_dist = (((dr << 1) + dg + db) >> 2);
+//              float weight = range_table[range_dist];
+//              float alpha_ = weight*alpha;
+//              for (int c = 0; c < channel; c++)
+//                  *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
+//              *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
+//          }
+//      }
+
+//     for(int i = 0; i < width_height_channel; i++){
+//        if(img_out_f[i] != img_out_f_2[i]){
+//            printf("Results not are  correct, the orignal result is img_out_f[%d] = %f,"
+//            "whereas the refactored result img_out_f_2[%d] = is %f\n", i, img_out_f[i], i, img_out_f_2[i]);
+//        }
+//    }
+
+//     for(int i = 0; i < width_height; i++){
+//         if(map_factor_b[i] != map_factor_b_2[i]){
+//             printf("Results not are  correct, the orignal result is map_factor_b[%d] = %f, "
+//             "whereas the refactored result map_factor_b_2[%d] = is %f\n", i, map_factor_b[i], i, map_factor_b_2[i]);
+//         }
+//     }
     elapse = timer.elapsedTime(); // runtime
 	printf("CPU External Buffer: %2.5fsecs\n", elapse); // print runtime
 
@@ -289,7 +334,6 @@ __global__ void secondKernel (
             //pointer move across column direction
             for (int c = 0; c < channel; c++) 
                 *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-                // *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++); 
             *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
             tpy = tpy - 3 + width_channel;
             tcy = tcy - 3 + width_channel;
