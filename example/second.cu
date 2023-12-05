@@ -18,8 +18,8 @@ still stick to the first method and try to see if GPU can speed up the computati
 
 __global__ void secondKernel (
   
-    float * img, float * img_temp, float * img_out_f, float * in_factor, float * map_factor_b,
-    float* range_table, int width, int height, int channel, int width_channel;
+    unsigned char * img, float * img_temp, float * img_out_f, float * in_factor, float * map_factor_b,
+    float* range_table, int width, int height, int channel, int width_channel,float alpha, float inv_alpha_
 ){
     /*----
     there are a number of width tasks to parallize. (width is the number of pixels per row)
@@ -28,7 +28,9 @@ __global__ void secondKernel (
     ---- */
         int index =  blockIdx.x * blockDim.x + threadIdx.x;
     //initialize parameters
-        float * ycy, * ypy, * xcy, * ycf, * ypf, * xcf, 
+        float * ycy, * ypy, * xcy, * ycf, * ypf, * xcf;
+        unsigned char * tpy, *tcy;
+        if(index >= width) return;
         tpy = &img[3 * index];
         tcy = &img[3 * index + width_channel];
         xcy = &img_temp[ 3 * index + width_channel];
