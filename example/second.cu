@@ -18,19 +18,28 @@ still stick to the first method and try to see if GPU can speed up the computati
 
 __global__ void secondKernel (
   
-    unsigned char * img, float * img_temp, float * img_out_f, float * in_factor, float * map_factor_b,
-    float* range_table, int width, int height, int channel, int width_channel,float alpha, float inv_alpha_
-){
+    float * buffer, unsigned char * img, float* range_table, int width, int height, int channel, float alpha
+, float inv_alpha_){
     /*----
     there are a number of width tasks to parallize. (width is the number of pixels per row)
     the width might be large like 5760 or even larger, as there might be a limit of the
     number of threads per block. We might propose a (width/1024) 1D blocks(suppose 1024 threads/b)
     ---- */
-        int index =  blockIdx.x * blockDim.x + threadIdx.x;
-    //initialize parameters
+        int width_channel = width * channel;
+        int width_height_channel = width * height * channel;
+        int width_height = width * height;
+        float * img_out_f = buffer;
+        float * img_temp = &img_out_f[width_height_channel];
+        float * map_factor_a = &img_temp[width_height_channel];
+        float * map_factor_b = &map_factor_a[width_height]; 
+        float * in_factor = map_factor_a;
+
         float * ycy, * ypy, * xcy, * ycf, * ypf, * xcf;
-        unsigned char * tpy, *tcy;
-        if(index >= width) return;
+        unsigned char *tcy, *tpy;
+
+        int index =  blockIdx.x * blockDim.x + threadIdx.x;
+        if(index  >= width) return;
+        printf("index is %d", index);
         tpy = &img[3 * index];
         tcy = &img[3 * index + width_channel];
         xcy = &img_temp[ 3 * index + width_channel];
@@ -53,7 +62,6 @@ __global__ void secondKernel (
             //pointer move across column direction
             for (int c = 0; c < channel; c++) 
                 *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-                // *ycf_++ = inv_alpha_*(*xcf_++) + alpha_*(*ypf_++); 
             *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
             tpy = tpy - 3 + width_channel;
             tcy = tcy - 3 + width_channel;
