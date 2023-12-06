@@ -39,7 +39,7 @@ __global__ void secondKernel (
 
         int index =  blockIdx.x * blockDim.x + threadIdx.x;
         if(index  >= width) return;
-        printf("index is %d", index);
+        // printf("index is %d", index);
         tpy = &img[3 * index];
         tcy = &img[3 * index + width_channel];
         xcy = &img_temp[ 3 * index + width_channel];
