@@ -115,7 +115,7 @@ void DeviceSecond(float * buffer, unsigned char * img, float * range_table, int 
     cudaMemcpy(buffer, buffer_d, sizeof(float) * buffer_size, cudaMemcpyDeviceToHost);
 
 //free
-    cudaFree(buffer);
+    cudaFree(buffer_d);
     cudaFree(img_d);
     cudaFree(range_table_d);
 
@@ -141,6 +141,7 @@ int main(int argc, char *argv[]){
     int width_channel = width * channel;
     int width_height = width * height;
     int buffer_size = (width_height_channel + width_height + width_channel + width) * 2;
+    float * buffer_ref = new float[buffer_size];
     float *buffer = new float[buffer_size];
     float *buffer2 = new float[buffer_size];
 
@@ -153,6 +154,7 @@ int main(int argc, char *argv[]){
     for (size_t i = 0; i < buffer_size; ++i) {
         buffer[i] = distribution(gen);
         buffer2[i] = buffer[i];
+        buffer_ref[i] = buffer[i];
     }
     // for(int i = 0; i < buffer_size; i++){
     //     printf("current buffer[%d] = %f ", i, buffer[i]);
@@ -198,6 +200,18 @@ int main(int argc, char *argv[]){
        if(buffer[i] != buffer2[i]){
            printf("Results  are not correct, the orignal result is buffer[%d] = %f,"
            "whereas the refactored result buffer2[%d] = is %f\n", i, buffer[i], i, buffer2[i]);
+       }
+   }
+    for(int i = 0; i < buffer_size; i++){
+       if(buffer_ref[i] != buffer[i]){
+           printf("Results  are not correct, the orignal result is buffer_ref[%d] = %f,"
+           "whereas the refactored result buffer[%d] = is %f\n", i, buffer_ref[i], i, buffer[i]);
+       }
+   }
+    for(int i = 0; i < buffer_size; i++){
+       if(buffer_ref[i] != buffer2[i]){
+           printf("Results  are not correct, the orignal result is buffer_ref[%d] = %f,"
+           "whereas the refactored result buffer2[%d] = is %f\n", i, buffer_ref[i], i, buffer2[i]);
        }
    }
 //time comparision
