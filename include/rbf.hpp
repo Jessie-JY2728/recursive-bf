@@ -283,7 +283,6 @@ inline void _recursive_bf(
     }
 
     for (int i = 0; i < width_height_channel; ++i){
-        printf("%.4f  ", img_out_f[i]);
         img[i] = static_cast<unsigned char>(img_out_f[i]);
     }
 
