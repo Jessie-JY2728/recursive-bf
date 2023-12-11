@@ -8,9 +8,9 @@
 __global__ void naiveKernel(unsigned char*, float*, float*, float* , int, int, int, float);
 __global__ void firstKernel(unsigned char*, float*, float*,  int, int, int, float);
 __global__ void secondKernel(unsigned char*, float*, float*,  int, int, int, float);
-
-//__constant__ float range_table_const[QX_DEF_CHAR_MAX + 1];   // Optimize: range table on device, in const memory
+__global__ void lastKernel(unsigned char*, float*, int, int);
 __constant__ float *range_table_const;
+
 void naiveRemainder(unsigned char*, float*, float*, int, int, int, float, float);
 
 /*--------------------------------*/
@@ -329,7 +329,7 @@ void naiveRemainder(
 
 void refactorGPU(
     unsigned char* img_h, int width, int height, int channel,
-    float sigma_spatial, float sigma_range, int rows_per_block, float* buffer) 
+    float sigma_spatial, float sigma_range, int rows_per_block) 
 {   
     // initial steps
     unsigned char* img_d;   // image on device
@@ -389,23 +389,13 @@ void refactorGPU(
     // then bottom to top, getting the final img_out_f
     alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
     num_blocks = (width % rows_per_block == 0) ? width / rows_per_block : width / rows_per_block + 1;
-    dim3 grid_third(num_blocks, 1, 1);
-    dim3 block_third(rows_per_block, 1, 1);
-    secondKernel<<<grid_third, block_third>>>(img_d, range_table_const, buffer_d, width, height, channel, alpha);
+    dim3 grid_second(num_blocks, 1, 1);
+    dim3 block_second(rows_per_block, 1, 1);
+    secondKernel<<<grid_second, block_second>>>(img_d, range_table_const, buffer_d, width, height, channel, alpha);
 
-    // copy back img_out_f
-    cudaMemcpy(buffer, buffer_d, width_height_channel * sizeof(float), cudaMemcpyDeviceToHost);
-
-    // convert to unsigned char
-    for (int i = 0; i < width_height_channel; ++i){
-        //printf("%.4f  ", buffer[i]);
-        //if (i % 99 == 0) printf("\n");
-	img_h[i] = static_cast<unsigned char>(buffer[i]);
-    }
-    //printf("\n\n");
-    cudaFree(buffer_d);
-    cudaFree(range_table_const);
-    cudaFree(img_d);
+    // last kernel: convert to unsigned char
+    lastKernel<<<grid_first, block_first>>>(img_d, buffer_d, width_channel, height);
+    cudaMemcpy(img_h, img_d, width_height_channel * sizeof(char), cudaMemcpyDeviceToHost);
 }
 
 // input: img; output: img_tmp, map_factor_a
@@ -618,76 +608,15 @@ __global__ void secondKernel(
 }
 
 
-// input: img, img_temp, map_factor_a, map_factor_b
-// output: img_out_f
-// __global__ void thirdKernel(
-//     unsigned char* img, float* buffer, float* range_table, 
-//     int width, int height, int channel, float sigma_spatial)
-// {
-//     int x = blockIdx.x * blockDim.x + threadIdx.x;
-//     if (x >= width) return;
+__global__ void lastKernel(unsigned char* img, float* img_out_f, int width_channel, int height)
+{
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row >= height) return;
 
-//     int width_height = width * height, width_channel = width * channel;
-//     int width_height_channel = width * height * channel;
-//     float * img_out_f = buffer;
-//     float * img_temp = &img_out_f[width_height_channel];
-//     float * map_factor_a = &img_temp[width_height_channel];
-//     float * map_factor_b = &map_factor_a[width_height];
+    //int width_channel = width * channel;
+    int start = row * width_channel;
+    for (int i = 0; i < width_channel; i++) {
+        img[start + i] = static_cast<unsigned char>(img_out_f[start + i]);
 
-//     int h1 = height - 1;
-//     float alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height))), inv_alpha_ = 1 - alpha;
-//     float* xcy;
-//     unsigned char *tcy, *tpy;
-//     float *xcf;
-
-//     tpy = &img[x * 3 + h1 * width_channel];
-//     tcy = tpy - width_channel;
-//     xcy = &img_temp[x * 3 + (h1 - 1) * width_channel];
-//     float at_ypf = map_factor_a[h1 * width + x];
-
-//     float at_ypy_r = img_temp[h1 * width_channel + x * 3];
-//     float at_ypy_g = img_temp[h1 * width_channel + x * 3 + 1];
-//     float at_ypy_b = img_temp[h1 * width_channel + x * 3 + 2];
-
-//     float* out_ = &img_out_f[x * 3 + (h1 - 1) * width_channel];
-//     xcf = &map_factor_a[(h1 -1)* width + x];
-//     float* factor_ = &map_factor_b[x + (h1-1) * width];
-
-//     //float alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
-
-//     for (int y = h1 - 1; y >= 0; y--) {
-//         unsigned char dr = abs((*tcy++) - (*tpy++));
-//         unsigned char dg = abs((*tcy++) - (*tpy++));
-//         unsigned char db = abs((*tcy++) - (*tpy++));
-//         int range_dist = (((dr << 1) + dg + db) >> 2);
-//         float weight = range_table[range_dist];
-//         float alpha_ = weight*alpha;
-
-//         float fcc = inv_alpha_*(*xcf) + alpha_*(at_ypf);
-//         at_ypf = fcc;
-//         *factor_ = 0.5f * (*factor_ + fcc);
-
-//         float ycc_r = inv_alpha_*(*xcy++) + alpha_* at_ypy_r;
-//         at_ypy_r = ycc_r;
-    
-//         *out_ = 0.5f * (*out_ + ycc_r) / (*factor_);
-//         *out_++;
-
-//         float ycc_g = inv_alpha_*(*xcy++) + alpha_* at_ypy_g;
-//         at_ypy_g = ycc_g;
-//         *out_ = 0.5f * (*out_ + ycc_g) / (*factor_);
-//         *out_++;
-
-//         float ycc_b = inv_alpha_*(*xcy++) + alpha_* at_ypy_b;
-//         at_ypy_b = ycc_b;
-//         *out_ = 0.5f * (*out_ + ycc_b) / (*factor_);
-//         //*out_++;
-
-//         tcy = tcy - 3 - width_channel;
-//         tpy = tpy - 3 - width_channel;
-//         out_ = out_ - 2 - width_channel;
-//         xcy = xcy - 3 - width_channel;
-//         factor_ = factor_ - width;
-//         xcf = xcf - width;
-//     }
-// }
+    }
+}

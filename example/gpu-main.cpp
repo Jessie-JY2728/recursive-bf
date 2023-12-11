@@ -89,12 +89,12 @@ int main(int argc, char *argv[]) {
         stbi_write_jpg(filename_out, width, height, channel, image, 75);   // write out cpu image
     } else if (who == 2) {
         // GPU refactor kernel
-        float* buffer = new float[width_height_channel];
+        //float* buffer = new float[width_height_channel];
         timer.start();
-        refactorGPU(image, width, height, channel, sigma_spatial, sigma_range, ROWS_PER_BLOCK, buffer);
+        refactorGPU(image, width, height, channel, sigma_spatial, sigma_range, ROWS_PER_BLOCK);
         elapse = timer.elapsedTime();
         printf("GPU Refactor Kernel: %2.5fsecs\n", elapse);
-        delete[] buffer;
+        //delete[] buffer;
         //std::string gpu_refac_filename_out = "gpu_refac_" + filename_out;
         /*for (int i = 0; i < width_height_channel; i++) {
 	  printf("%d ", image[i]);
