@@ -392,10 +392,15 @@ void refactorGPU(
     dim3 grid_second(num_blocks, 1, 1);
     dim3 block_second(rows_per_block, 1, 1);
     secondKernel<<<grid_second, block_second>>>(img_d, range_table_const, buffer_d, width, height, channel, alpha);
+    cudaDeviceSynchronize();
 
     // last kernel: convert to unsigned char
     lastKernel<<<grid_first, block_first>>>(img_d, buffer_d, width_channel, height);
     cudaMemcpy(img_h, img_d, width_height_channel * sizeof(char), cudaMemcpyDeviceToHost);
+
+    cudaFree(buffer_d);
+    cudaFree(img_d);
+    cudaFree(range_table_const);
 }
 
 // input: img; output: img_tmp, map_factor_a
@@ -511,7 +516,12 @@ __global__ void secondKernel(
     float * in_factor = map_factor_a;
     tpy = &img[3 * index];
     tcy = &img[3 * index + width_channel];
-    xcy = &img_temp[ 3 * index + width_channel];
+    xcy = &img_temp[3 * index + width_channel];
+
+    img_out_f[3 * index] = img_temp[3 * index]; 
+    img_out_f[3 * index + 1] = img_temp[3 * index + 1]; 
+    img_out_f[3 * index + 2] = img_temp[3 * index + 2];
+    map_factor_b[index] = map_factor_a[index];
 
     ypy = &img_out_f[3 * index];
     ycy = &img_out_f[3 * index + width_channel];
@@ -553,9 +563,9 @@ __global__ void secondKernel(
     xcy = &img_temp[h1 * width_channel];
     ypy = &img_out_f[h1 * width_channel];
 
-    ypy[index * 3] = 0.5f * (ypy[index * 3] + xcy[index * 3]) / ypf[index];
-    ypy[index * 3 + 1] = 0.5f * (ypy[index * 3 + 1] + xcy[index * 3 + 1]) / ypf[index];
-    ypy[index * 3 + 2] = 0.5f * (ypy[index * 3 + 2] + xcy[index * 3 + 2]) / ypf[index];
+    ypy[index * 3] = 0.5f * (ypy[index * 3] + xcy[index * 3]) / map_factor_b[h1 * width + x];
+    ypy[index * 3 + 1] = 0.5f * (ypy[index * 3 + 1] + xcy[index * 3 + 1]) / map_factor_b[h1 * width + x];
+    ypy[index * 3 + 2] = 0.5f * (ypy[index * 3 + 2] + xcy[index * 3 + 2]) / map_factor_b[h1 * width + x];
 
     tpy = &img[x * 3 + h1 * width_channel];
     tcy = tpy - width_channel;

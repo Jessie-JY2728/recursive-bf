@@ -38,8 +38,8 @@ int main(int argc, char *argv[]) {
     int ROWS_PER_BLOCK = atoi(argv[3]);
     int who = atoi(argv[4]);
 
-	float sigma_spatial = 0.03;
-	float sigma_range = 0.1;
+	float sigma_spatial = 0.3;  // parameter
+	float sigma_range = 1;      // parameter
     int width, height, channel;
     unsigned char *image = stbi_load(filename_in, &width, &height, &channel, 0);
     if (!image) {
@@ -65,11 +65,7 @@ int main(int argc, char *argv[]) {
         elapse = timer.elapsedTime(); // runtime
         printf("CPU External Buffer: %2.5fsecs\n", elapse); // print runtime
         delete[] buffer;    // clean up
-        /*for (int i = 0; i < width_height_channel; i++) {
-	  printf("%d ", image[i]);
-	  if (i % 99 == 98) printf("\n");
-	}
-	printf("\n\n");*/
+    
 	//std::string cpu_filename_out = "cpu_" + filename_out;   // add prefix "cpu_" for output file name
         stbi_write_jpg(filename_out, width, height, channel, image_out, 75);   // write out cpu image
     } else if (who == 1) {
@@ -80,12 +76,7 @@ int main(int argc, char *argv[]) {
         elapse = timer.elapsedTime();   // runtime
         printf("GPU Naive Kernel: %2.5fsecs\n", elapse); // print runtime
         delete[] buffer;
-	/*for (int i = 0; i < width_height_channel; i++) {
-	  printf("%d ", image[i]);
-	  if (i % 99 == 98) printf("\n");
-	}
-	printf("\n\n");*/
-        //std::string gpu_naive_filename_out = "gpu_naive_" + filename_out;   // add prefix "gpu_naive_" for output file name
+	
         stbi_write_jpg(filename_out, width, height, channel, image, 75);   // write out cpu image
     } else if (who == 2) {
         // GPU refactor kernel
@@ -94,13 +85,7 @@ int main(int argc, char *argv[]) {
         refactorGPU(image, width, height, channel, sigma_spatial, sigma_range, ROWS_PER_BLOCK);
         elapse = timer.elapsedTime();
         printf("GPU Refactor Kernel: %2.5fsecs\n", elapse);
-        //delete[] buffer;
-        //std::string gpu_refac_filename_out = "gpu_refac_" + filename_out;
-        /*for (int i = 0; i < width_height_channel; i++) {
-	  printf("%d ", image[i]);
-	  if (i % 99 == 98) printf("\n");
-	}
-        printf("\n\n");*/
+        
         stbi_write_jpg(filename_out, width, height, channel, image, 75);
     } else {
         printf("Bad choice of Who\n");
