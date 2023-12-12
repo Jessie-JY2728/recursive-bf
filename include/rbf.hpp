@@ -146,7 +146,6 @@ inline void _recursive_bf(
             *temp_factor_x++ = fc = inv_alpha_ + alpha_*fp;
             fp = fc;
         }
-        //printf("\n\n");
         
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
@@ -171,7 +170,6 @@ inline void _recursive_bf(
             int range_dist = (((dr << 1) + dg + db) >> 2);
             float weight = range_table[range_dist];
             float alpha_ = weight * alpha;
-            //printf("%d ", alpha_);
 
             ycr = inv_alpha_ * (*--in_x) + alpha_ * ypr; 
             ycg = inv_alpha_ * (*--in_x) + alpha_ * ypg; 
@@ -187,7 +185,6 @@ inline void _recursive_bf(
             *temp_factor_x = 0.5f*((*temp_factor_x) + fc);
             fp = fc;
         }
-        //printf("\n");
     }
 
     alpha = static_cast<float>(exp(-sqrt(2.0) / (sigma_spatial * height)));
