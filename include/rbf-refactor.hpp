@@ -150,7 +150,6 @@ inline void _recursive_bf(
             *temp_factor_x++ = fc = inv_alpha_ + alpha_*fp;
             fp = fc;
         }
-        //printf("\n\n");
         
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
         *--temp_x; *temp_x = 0.5f*((*temp_x) + (*--in_x));
@@ -191,7 +190,6 @@ inline void _recursive_bf(
             *temp_factor_x = 0.5f*((*temp_factor_x) + fc);
             fp = fc;
         }
-        //printf("\n");
     }
 
     /*----------------------------------*/
@@ -226,11 +224,6 @@ inline void _recursive_bf(
         ycf = &map_factor_b[x + width];
 
         for(int y = 1; y < height; y++){
-            // tcy = &img[3 * x + y * width_channel];
-            // xcy = &img_temp[3 * x + y * width_channel];
-            // ycy = &img_out_f[3 * x + y * width_channel];
-            // xcf = &in_factor[ x + y * width];
-            // ycf = &map_factor_b[ x + y * width];
             unsigned char dr = abs((*tcy++) - (*tpy++));
             unsigned char dg = abs((*tcy++) - (*tpy++));
             unsigned char db = abs((*tcy++) - (*tpy++));
@@ -240,7 +233,6 @@ inline void _recursive_bf(
             //pointer move across column direction
             for (int c = 0; c < channel; c++) 
                 *ycy++ = inv_alpha_*(*xcy++) + alpha_*(*ypy++);
-                // *ycf_++ = inv_alpha_*(*xcf_++) + alpha_*(*ypf_++); 
             *ycf++ = inv_alpha_*(*xcf++) + alpha_*(*ypf++);
             tpy = tpy - 3 + width_channel;
             tcy = tcy - 3 + width_channel;
@@ -324,7 +316,6 @@ inline void _recursive_bf(
             float ycc_b = inv_alpha_*(*xcy++) + alpha_* at_ypy_b;
             at_ypy_b = ycc_b;
             *out_ = 0.5f * (*out_ + ycc_b) / (*factor_);
-            //*out_++;
 
             tcy = tcy - 3 - width_channel;
             tpy = tpy - 3 - width_channel;
