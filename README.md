@@ -1,8 +1,26 @@
-Recursive bilateral filtering (developed by Qingxiong Yang) is pretty fast compared with most edge-preserving filtering methods
-- computational complexity is linear in both input size and dimensionality:
-- takes about 43 ms to process a one megapixel color image (i7 1.8GHz & 4GB mem)
-- about 18x faster than *Fast high-dimensional filtering using the permutohedral lattice*
-- about 86x faster than *Gaussian kd-trees for fast high-dimensional filtering*
+This is a GPU CUDA accelerated version of the Recursive Bilateral Filter program. The original algorithm (developed by Qingxiong Yang) is already pretty fast compared with most edge-preserving filtering methods. The GPU version is ~10x faster than its sequential basis on larger images. 
+- takes 1.64 secs to process a 15870 x 7933 RGB image, an 8.31x speedup
+- takes 0.79 secs to process a 17707 x 4894 RGB image, a 11.86x speedup
+
+The /include directory contains original and refactored CPU implementation. The /example directory contains the GPU version, and /images contain sample images used for testing. To compile and run the program, do the following commands:
+
+```
+cd example
+nvcc -o <executable> gpu-main.cpp gpu-kernels.cu
+./<executable> <filename_in> <filename_out> <rows_per_block> <who>
+```
+where <rows_per_block> is the block dimension, and 
+- who=0: CPU version
+- who=1: GPU naive version
+- who=2: GPU refactored version
+
+for example:
+```
+cd example
+nvcc -o rbf gpu-main.cpp gpu-kernels.cu
+./rbf images/1.jpeg 1_gpu.jpg 32 2
+```
+
 
 ## Results
 <table>
@@ -16,25 +34,3 @@ Recursive bilateral filtering (developed by Qingxiong Yang) is pretty fast compa
 <td><img src="https://cloud.githubusercontent.com/assets/2270240/26041583/86ea7b22-3960-11e7-8ded-5109b76966ca.jpg" width="300px"><br/><p align="center">Gaussian Blur</p></td>
 <td><img src="https://cloud.githubusercontent.com/assets/2270240/26041584/88dfc9b4-3960-11e7-8c9d-2634eac098d0.jpg" width="300px"><br/><p align="center">Median Blur</p></td>
 </tr></table>
-
-For more details of the algorithm, please refer to the original paper
-
-    @inproceedings{yang2012recursive,
-        title={Recursive bilateral filtering},
-        author={Yang, Qingxiong},
-        booktitle={European Conference on Computer Vision},
-        pages={399--413},
-        year={2012},
-        organization={Springer}
-    }
-
-Optionally, you can cite this repo
-
-    @misc{ming2017recursive,
-        author = {Ming Yang},
-        title = {A lightweight C++ library for recursive bilateral filtering},
-        year = {2017},
-        publisher = {GitHub},
-        journal = {GitHub repository},
-        howpublished = {\url{https://github.com/ufoym/RecursiveBF}}
-    }
