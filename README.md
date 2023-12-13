@@ -2,8 +2,12 @@ This is a GPU CUDA accelerated version of the Recursive Bilateral Filter program
 - takes 1.64 secs to process a 15870 x 7933 RGB image, an 8.31x speedup
 - takes 0.79 secs to process a 17707 x 4894 RGB image, a 11.86x speedup
 
-The `/include` directory contains original and refactored CPU implementation. The `/example` directory contains the GPU version, and `/images` contain sample images used for testing. To compile and run the program, do the following commands:
+Directories: 
+- `/include` contains original and refactored CPU implementation
+- `/example` directory contains the GPU version
+- `/images` contain sample images used for testing.
 
+To compile and run the program, do the following commands:
 ```
 cd example
 nvcc -o <executable> gpu-main.cpp gpu-kernels.cu
