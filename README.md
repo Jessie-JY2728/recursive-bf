@@ -13,7 +13,7 @@ cd example
 nvcc -o <executable> gpu-main.cpp gpu-kernels.cu
 ./<executable> <filename_in> <filename_out> <rows_per_block> <who>
 ```
-where <rows_per_block> is the block dimension, and 
+where `<rows_per_block>` is the block dimension, and 
 - who=0: CPU version
 - who=1: GPU naive version
 - who=2: GPU refactored version
